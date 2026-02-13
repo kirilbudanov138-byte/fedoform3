@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Fedoform — Твоя соцсеть</title>
+    <style>
+        :root { --primary: #007bff; --bg: #f4f7f6; --text: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; display: flex; height: 100vh; color: var(--text); }
+        
+        /* Хедер с названием */
+        .logo { font-size: 24px; font-weight: 800; color: var(--primary); margin-bottom: 20px; letter-spacing: -1px; }
+        .logo span { color: #333; }
+
+        .sidebar { width: 280px; background: #fff; border-right: 1px solid #ddd; padding: 20px; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
+        .section-title { font-weight: bold; color: #888; text-transform: uppercase; font-size: 0.75rem; margin-top: 10px; }
+        
+        .user-card { display: flex; align-items: center; padding: 12px; border-radius: 10px; cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+        .user-card:hover { background: #f8f9fa; }
+        .user-card.active { border-color: var(--primary); background: #eef7ff; }
+        
+        .avatar { width: 40px; height: 40px; border-radius: 12px; background: #eee; margin-right: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; }
+
+        .main-content { flex-grow: 1; overflow-y: auto; padding: 30px; display: flex; flex-direction: column; align-items: center; }
+        .feed { width: 100%; max-width: 600px; }
+        
+        /* Посты */
+        .post { background: white; border-radius: 15px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); animation: fadeIn 0.3s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .post-header { display: flex; align-items: center; font-weight: bold; margin-bottom: 12px; }
+        .post-content { line-height: 1.5; margin-bottom: 15px; }
+        
+        .post-actions { border-top: 1px solid #eee; padding-top: 10px; }
+        .like-btn { background: none; border: none; color: #666; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; gap: 5px; }
+        .like-btn:hover { color: #ff4757; }
+
+        textarea { width: 100%; border: 1px solid #ddd; border-radius: 10px; padding: 12px; resize: none; font-family: inherit; font-size: 1rem; box-sizing: border-box; }
+        .btn-post { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 10px; width: 100%; font-weight: bold; margin-top: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="logo">Fedo<span>form</span></div>
+    
+    <div class="section-title">Активный профиль</div>
+    <div id="currentUserBox" style="font-weight: bold; font-size: 1.1rem; padding: 5px;"></div>
+    
+    <button onclick="createAccount()" style="cursor:pointer; background:#f0f2f5; border:none; padding:8px; border-radius:8px;">+ Новый аккаунт</button>
+
+    <div class="section-title">Переключить пользователя</div>
+    <div id="usersList"></div>
+
+    <div class="section-title">Темы</div>
+    <div id="topics">
+        <div style="padding: 5px;"># новости</div>
+        <div style="padding: 5px;"># разработка</div>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="feed">
+        <div class="post">
+            <textarea id="postInput" placeholder="Поделитесь мыслями в Fedoform..."></textarea>
+            <button class="btn-post" onclick="savePost()">Опубликовать</button>
+        </div>
+        <div id="wall"></div>
+    </div>
+</div>
+
+<script>
+    // Инициализация данных
+    let users = JSON.parse(localStorage.getItem('ff_users')) || [
+        { id: 1, name: 'Создатель', icon: '⚡' },
+        { id: 2, name: 'Алекс', icon: '🕶️' }
+    ];
+    let posts = JSON.parse(localStorage.getItem('ff_posts')) || [];
+    let currentUser = users[0];
+
+    function init() {
+        renderUsers();
+        renderPosts();
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('currentUserBox').innerHTML = `${currentUser.icon} ${currentUser.name}`;
+    }
+
+    function renderUsers() {
+        const list = document.getElementById('usersList');
+        list.innerHTML = '';
+        users.forEach(user => {
+            const div = document.createElement('div');
+            div.className = `user-card ${user.id === currentUser.id ? 'active' : ''}`;
+            div.onclick = () => { currentUser = user; renderUsers(); updateUI(); };
+            div.innerHTML = `<div class="avatar">${user.icon}</div> <div>${user.name}</div>`;
+            list.appendChild(div);
+        });
+    }
+
+    function savePost() {
+        const text = document.getElementById('postInput').value;
+        if (!text.trim()) return;
+
+        const newPost = {
+            id: Date.now(),
+            author: currentUser.name,
+            icon: currentUser.icon,
+            content: text,
+            likes: 0
+        };
+
+        posts.unshift(newPost);
+        localStorage.setItem('ff_posts', JSON.stringify(posts));
+        document.getElementById('postInput').value = '';
+        renderPosts();
+    }
+
+    function renderPosts() {
+        const wall = document.getElementById('wall');
+        wall.innerHTML = '';
+        posts.forEach(post => {
+            const el = document.createElement('div');
+            el.className = 'post';
+            el.innerHTML = `
+                <div class="post-header">
+                    <div class="avatar" style="width:30px; height:30px; font-size:1rem;">${post.icon}</div>
+                    ${post.author}
+                </div>
+                <div class="post-content">${post.content}</div>
+                <div class="post-actions">
+                    <button class="like-btn" onclick="likePost(${post.id})">❤️ ${post.likes}</button>
+                </div>
+            `;
+            wall.appendChild(el);
+        });
+    }
+
+    function likePost(id) {
+        posts = posts.map(p => p.id === id ? {...p, likes: p.likes + 1} : p);
+        localStorage.setItem('ff_posts', JSON.stringify(posts));
+        renderPosts();
+    }
+
+    function createAccount() {
+        const name = prompt("Имя для Fedoform:");
+        if (!name) return;
+        const icon = ['🚀','🐱','🐳','🦊','🤖'][Math.floor(Math.random()*5)];
+        users.push({ id: Date.now(), name, icon });
+        localStorage.setItem('ff_users', JSON.stringify(users));
+        renderUsers();
+    }
+
+    init();
+</script>
+
+</body>
+</html>
